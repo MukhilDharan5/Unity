@@ -1,81 +1,45 @@
 # Unity
 
-Companion **0.1.36** and the matching Linux update support [Bluetooth plus the phone's own Wi-Fi hotspot](Unity_Linux/docs/direct-hotspot.md), including changing hotspot addresses and recovery from a stale router connection. Unity's local features do not need a separate router or internet access.
+Unity is a local-first platform for connecting your phone and computers. It lets paired devices communicate and adds optional tools for sharing, notifications, media, calls, messages and remote control. This is the Unity device-connectivity project, unrelated to the Unity game engine.
 
-Companion **0.1.35** adds a desktop [Connectivity tab](Unity_Linux/docs/connectivity.md): observed phone Mobile Hotspot state, connected Bluetooth devices sent from the phone, and Samsung routine switches for Mobile Hotspot and disconnecting a selected device.
+**This repository is the documentation hub.** It explains Unity, its three feature tiers and the repositories that implement it. Application source, builds and tests belong in the linked repositories.
 
-Companion **0.1.34** adds [Samsung Routines triggers](Unity_Linux/docs/samsung-routines.md) for hotspot on/off and disconnecting a phone-configured Bluetooth device, with matching desktop controls.
+## Unity Core, Basic and Advanced
 
-Companion **0.1.33** and matching desktop updates add [automatic clipboard sync](Unity_Linux/docs/clipboard-sync.md) with no send/receive buttons. Android background sending uses authorized Shizuku access while keeping your current keyboard; incoming text is applied automatically.
+These are feature tiers across the platform repositories, not three additional repositories.
 
-Unity is a local-first companion platform with two independent projects. The Linux daemon provides the public D-Bus API; its GTK application and CLI are clients of that API. The Android companion communicates with the daemon over simultaneous authenticated Wi-Fi / LAN and Bluetooth connections.
-
-| Project | Contents | Build guide |
+| Tier | Purpose | Scope |
 | --- | --- | --- |
-| [Unity_Linux](Unity_Linux/README.md) | Rust daemon, protocol, transports, D-Bus API, CLI, GTK frontend, systemd unit, and Linux tests | [Linux build](Unity_Linux/docs/build.md) |
-| [Unity_Android](Unity_Android/README.md) | Kotlin companion, Android services, permission flows, UI, and Android tests | [Android build](Unity_Android/docs/build.md) |
+| [Unity Core](docs/core.md) | Communication layer only | Device identity, discovery, explicit pairing, authenticated encrypted connections, capability negotiation, generic message routing, connection lifecycle and revocation. No user-facing device features. |
+| [Unity Basic](docs/basic.md) | A simple KDE Connect / Microsoft Phone Link alternative | Core plus everyday sharing, battery status, notifications, ordinary media controls, find phone and optional Phone/Messages integration through normal OS permissions and explicit consent. |
+| [Unity Advanced](docs/advanced.md) | The full Unity feature set | Basic plus device-specific integrations, high-privilege access, experimental audio/display features, unattended control and other unstable or potentially insecure features. Each requires its own setup and risk review. |
 
-Both projects can be built from their own directories. They share [wire protocol v1](Unity_Linux/docs/protocol.md); changing messages or capabilities requires coordinating both sides. The Linux daemon runs without either graphical client. See the [feature matrix](Unity_Linux/docs/features.md) for the distinction between implemented, partial, unsupported, and hardware-untested features.
+Basic describes a similar use case to KDE Connect and Phone Link; Unity uses its own protocol and does not claim compatibility or complete feature parity with either product.
 
-## Linux app
+**Current status:** the source is organized into separate repositories. Core, Basic and Advanced define the intended architecture and feature boundaries; the existing platform sources still contain a combined implementation. Separate tier builds and enforced privilege isolation have not been implemented by this reorganization. The existing Linux crate called `unity-core` also contains feature orchestration and is not yet the communication-only Unity Core described here.
 
-![Unity Linux Overview](Unity_Linux/docs/images/linux-overview.png)
+## Unity repositories
 
-![Unity Linux Media](Unity_Linux/docs/images/linux-media.png)
+| Repository | Owns |
+| --- | --- |
+| [unity](https://github.com/MukhilDharan5/Unity) | This documentation hub: project explanation, tiers, architecture boundaries and repository directory. |
+| [unity_linux](https://github.com/MukhilDharan5/Unity_Linux) | Linux communication service, D-Bus API, CLI, GTK app and Linux integrations. |
+| [unity_windows](https://github.com/MukhilDharan5/Unity_Windows) | Windows communication host, native Windows app and Windows integrations. |
+| [unity_android](https://github.com/MukhilDharan5/Unity_Android) | Android connectivity companion, Android integrations and the local bridges to Phone and Messages. |
+| [unity_Phone](https://github.com/MukhilDharan5/Unity_Phone) | Unity Phone for Android and Linux: dialer, contacts, call history and desktop phone client. |
+| [unity_messages](https://github.com/MukhilDharan5/Unity_Messages) | Unity Messages for Android and Linux: SMS ownership and desktop messaging client. |
+| [unity_Continuity_companion](https://github.com/MukhilDharan5/Unity_Continuity_Companion) | Firefox extension, browser session continuity, extension packaging and browser tests. |
 
-![Unity Linux Photos](Unity_Linux/docs/images/linux-photos.png)
+The repository links above identify each project’s source and documentation. Clone the repositories you need; the documentation hub does not include application source.
 
-These screenshots render the real GTK widgets with isolated test data. They do not show a live phone session.
+Phone and Messages are separate applications. Android owns calls, contacts, SMS, system roles and permissions. Their Linux clients use Unity's authenticated communication service; neither app introduces a second network transport or pairing system. Their Android apps can be used locally without a desktop connection. Windows implementation details and limits remain in the Windows repository; this split does not add Windows Phone or Messages applications.
 
-## Android app
+See the [repository guide](docs/repositories.md) for ownership and development layout, and the [migration record](docs/migration.md) for how the existing source and work in progress were preserved.
 
-![Unity Android overview, sharing, features, and dark appearance](Unity_Android/docs/images/android-ui.png)
+## Connection and permission model
 
-These screenshots render the production Android widgets in automated UI tests. No computer was paired in the screenshots.
+Unity's existing implementations communicate directly over authenticated Wi-Fi/LAN and Bluetooth Classic RFCOMM. Local features do not require an account or a mandatory cloud relay. Features depend on the capabilities, OS permissions and policies of both paired devices.
 
-## Get started
+Communication trust is separate from permission to use a feature. Pairing a device must not imply approval for screen capture, remote input, unlocking, authentication, call control or messages. Core carries authorized messages; platform adapters and the Phone/Messages apps own feature behavior and permission checks. Advanced expands access and risk even when its traffic is encrypted.
 
-```sh
-cd Unity_Linux
-source scripts/env.sh
-./scripts/build.sh
-python3 scripts/install.py
-systemctl --user daemon-reload
-systemctl --user enable --now unityd.service
-
-cd ../Unity_Android
-source scripts/env.sh
-./scripts/build.sh
-```
-
-Build the Android APK using the [Android build guide](Unity_Android/docs/build.md), then install it over an existing debug companion to retain pairing. On the phone, enter the computer's LAN address and the verified certificate fingerprint printed by `unityctl discover`. Review and approve the pending phone identity on the Linux computer. Follow each project's build guide for dependencies and the full setup procedure.
-
-There is no mandatory account, external server, telemetry, or root daemon. Unity remains an early functional implementation with platform and permission limits documented in the [testing guide](Unity_Linux/docs/testing.md).
-
-Unity now includes [laptop audio routing](Unity_Linux/docs/audio-routing.md), plus [screen sharing and remote device locking in both directions](Unity_Linux/docs/screen-and-lock.md). Update Linux and the Android companion together; phone permissions remain opt-in.
-
-Companion 0.1.8 maintains [Bluetooth and Wi-Fi / LAN together](Unity_Linux/docs/bluetooth.md), routing controls and small updates over Bluetooth and files, photos, audio and screen sharing over Wi-Fi / LAN. Each link reconnects independently with fallback for new work. Phone sound is in Media; phone Mobile Hotspot, Bluetooth devices and internet sharing are in Connectivity.
-
-Companion 0.1.9 and the updated Linux daemon post [native notifications for received files, links and text](Unity_Linux/docs/received-items.md). Click an alert to open that exact item on its destination device.
-
-Companion 0.1.14 and the updated Linux daemon add [desktop push alerts for new phone notifications and SMS](Unity_Linux/docs/phone-notifications.md), including operation while GTK is closed and actions opening the paired device's Notifications/Messages page.
-
-Companion 0.1.12 provides [call management and SMS reports](Unity_Linux/docs/telephony.md): ordinary Android permissions, contacts/history and dialing, with Linux oFono Bluetooth HFP call controls/audio while retaining the phone's usual Phone app. The desktop popup and Calls page share a live timer, answer/decline, hold/resume, end, mute, keypad and audio controls. An optional Android Phone app setup enables phone earpiece, speakerphone and Bluetooth routing. HFP works without that role. Physical calls and carrier receipts still require device validation.
-
-Companion 0.1.13 adds [phone control of the shared laptop screen](Unity_Linux/docs/screen-and-lock.md), an Android keyboard toggle, and a laptop-display-off option in both apps. The panel restores when sharing ends or its connection is lost; KDE unattended startup and panel power-off/restoration were checked on the real desktop; phone gestures and end-to-end latency still need physical-device validation.
-
-The KDE desktop update supports [starting directly from the phone](Unity_Linux/docs/screen-and-lock.md#starting-entirely-from-the-phone-on-kde) with companion 0.1.13. Enable the dedicated unattended permission once; screen-off now powers down the laptop panel while a temporary mirror keeps phone control working.
-
-Both apps now support [laptop and phone media players with loop protection](Unity_Linux/docs/media-sync.md), using companion 0.1.15 and the current Linux build.
-
-Companion 0.1.16 and Linux add [independent laptop/phone volume and mute controls](Unity_Linux/docs/device-volume.md) in both Media screens, with quiet external updates and replay protection.
-
-Companion 0.1.17 and Linux fix [laptop audio streaming](Unity_Linux/docs/audio-routing.md) under Wi-Fi delays, packet gaps, and transient phone audio interruptions, with playback error reporting and silent-volume hints.
-
-Companion 0.1.18 and Linux repair Find phone with an audible alarm and synchronized Ring/Stop controls.
-
-Companion **0.1.22** and matching Linux support [audio in either direction](Unity_Linux/docs/audio-routing.md), with Automatic, Wi-Fi stereo and Bluetooth mono choices while keeping both links connected. Phone media capture uses Android's per-session approval.
-
-Companion **0.1.23** and matching Linux add [phone-as-main-display handoff](Unity_Linux/docs/screen-and-lock.md): a temporary virtual monitor becomes primary and the OS disables the laptop panel, with automatic layout restoration. The phone’s computer viewer now supports sensor rotation and an explicit landscape/portrait control.
-
-Companion **0.1.24** and matching Linux add [extended display](Unity_Linux/docs/screen-and-lock.md#phone-as-an-extended-display): use the phone as a separate monitor while continuing to use the laptop display. The existing primary-display handoff remains a separate choice.
+Platform build instructions, protocol details, compatibility and validation evidence belong in each implementation repository. A documented or compiled feature is not evidence that it works reliably on every physical device.

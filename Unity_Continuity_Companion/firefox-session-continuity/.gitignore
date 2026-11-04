@@ -1,7 +1,0 @@
-node_modules/
-.pnpm-store/
-.test-profiles/
-.test-runtime/
-artifacts/*.log
-artifacts/screenshots/
-test-results/*.json
